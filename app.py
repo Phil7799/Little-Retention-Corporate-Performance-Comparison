@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from uuid import uuid4
 
 # Set page configuration
-st.set_page_config(page_title="Little Retention", page_icon="🚕", layout="wide")
+st.set_page_config(page_title="Little Retention", page_icon="https://res.cloudinary.com/dnq8ne9lx/image/upload/v1753860594/infograph_ewfmm6.ico", layout="wide")
 
 # Function to load data
 @st.cache_data
