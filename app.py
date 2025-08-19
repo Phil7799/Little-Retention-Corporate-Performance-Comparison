@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 from uuid import uuid4
 
 # Set page configuration
@@ -14,15 +15,16 @@ def load_data():
         target_df = pd.read_excel("data.xlsx", sheet_name="Target")
         data_2024_df = pd.read_excel("data.xlsx", sheet_name="2024")
         data_2025_df = pd.read_excel("data.xlsx", sheet_name="2025")
-        return target_df, data_2024_df, data_2025_df
+        data_2025_week_df = pd.read_excel("data.xlsx", sheet_name="2025_week_data")
+        return target_df, data_2024_df, data_2025_df, data_2025_week_df
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
-        return None, None, None
+        return None, None, None, None
 
 # Load data
-target_df, data_2024_df, data_2025_df = load_data()
+target_df, data_2024_df, data_2025_df, data_2025_week_df = load_data()
 
-if target_df is None or data_2024_df is None or data_2025_df is None:
+if target_df is None or data_2024_df is None or data_2025_df is None or data_2025_week_df is None:
     st.stop()
 
 # Title
@@ -42,21 +44,25 @@ with col3:
 filtered_target = target_df.copy()
 filtered_2024 = data_2024_df.copy()
 filtered_2025 = data_2025_df.copy()
+filtered_2025_week = data_2025_week_df.copy()
 
 if corporate != "All":
     filtered_target = filtered_target[filtered_target["Corporates"] == corporate]
     filtered_2024 = filtered_2024[filtered_2024["Corporates"] == corporate]
     filtered_2025 = filtered_2025[filtered_2025["Corporates"] == corporate]
+    filtered_2025_week = filtered_2025_week[filtered_2025_week["Corporates"] == corporate]
 
 if industry != "All":
     filtered_target = filtered_target[filtered_target["industry_"] == industry]
     filtered_2024 = filtered_2024[filtered_2024["industry_"] == industry]
     filtered_2025 = filtered_2025[filtered_2025["industry_"] == industry]
+    filtered_2025_week = filtered_2025_week[filtered_2025_week["industry_"] == industry]
 
 if assignee != "All":
     filtered_target = filtered_target[filtered_target["Assignee_"] == assignee]
     filtered_2024 = filtered_2024[filtered_2024["Assignee_"] == assignee]
     filtered_2025 = filtered_2025[filtered_2025["Assignee_"] == assignee]
+    filtered_2025_week = filtered_2025_week[filtered_2025_week["Assignee_"] == assignee]
 
 # Ensure we have data to display
 if filtered_target.empty or filtered_2024.empty or filtered_2025.empty:
@@ -238,3 +244,66 @@ if not churned_df.empty:
     st.dataframe(churned_df, use_container_width=True)
 else:
     st.info("No churned corporates found (all corporates active in 2025).")
+
+# Display 2025 Weekly Data Trend Table
+st.header("2025 Weekly Data Trend")
+if not filtered_2025_week.empty:
+    def calculate_slope(row):
+        weeks = [float(row[f'week {i}']) for i in range(1, 34) if pd.notna(row[f'week {i}'])]
+        x = list(range(1, len(weeks) + 1))
+        if np.any(weeks):  # Avoid all zeros
+            slope, _ = np.polyfit(x, weeks, 1)
+        else:
+            slope = 0
+        return slope
+
+    # Convert weekly columns to numeric, coercing errors to NaN
+    weekly_cols = [f'week {i}' for i in range(1, 34)]
+    for col in weekly_cols:
+        filtered_2025_week[col] = pd.to_numeric(filtered_2025_week[col], errors='coerce').fillna(0)
+
+    filtered_2025_week['Slope'] = filtered_2025_week.apply(calculate_slope, axis=1)
+    st.dataframe(filtered_2025_week, use_container_width=True)
+else:
+    st.info("No weekly data available for the selected filters.")
+
+# Plot 2025 Weekly Trend Line Graph
+st.header("2025 Weekly Trend per Corporate")
+if not filtered_2025_week.empty:
+    # Determine which corporates to plot
+    if corporate != "All" and industry == "All" and assignee == "All":
+        # Show trend for the selected corporate
+        plot_df = filtered_2025_week[filtered_2025_week["Corporates"] == corporate]
+        corporates_to_plot = [corporate]
+    else:
+        # Show top 5 corporates by total revenue when no corporate filter or other filters are applied
+        total_revenue = filtered_2025_week[weekly_cols].sum(axis=1)
+        top_corporates = filtered_2025_week.loc[total_revenue.nlargest(5).index, "Corporates"].unique()
+        plot_df = filtered_2025_week[filtered_2025_week["Corporates"].isin(top_corporates)]
+        corporates_to_plot = top_corporates
+
+    fig_weekly = go.Figure()
+    weeks = [f"week {i}" for i in range(1, 34)]
+    for corp in corporates_to_plot:
+        corp_data = plot_df[plot_df["Corporates"] == corp].iloc[0]
+        weekly_values = [float(corp_data[week]) for week in weeks]
+        fig_weekly.add_trace(go.Scatter(
+            x=weeks,
+            y=weekly_values,
+            mode="lines+markers",
+            name=corp,
+            line=dict(width=2),
+            marker=dict(size=6)
+        ))
+
+    fig_weekly.update_layout(
+        title="2025 Weekly Revenue Trend",
+        xaxis_title="Week",
+        yaxis_title="Revenue",
+        template="plotly_white",
+        height=600,
+        showlegend=True
+    )
+    st.plotly_chart(fig_weekly, use_container_width=True, config={"responsive": True})
+else:
+    st.info("No weekly data available to plot.")
