@@ -70,7 +70,7 @@ if filtered_target.empty or filtered_2024.empty or filtered_2025.empty:
     st.stop()
 
 # Prepare data for comparison table with corporate names
-months_2025 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"]
+months_2025 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"]
 comparison_data = []
 
 # Merge DataFrames to ensure consistent corporates
