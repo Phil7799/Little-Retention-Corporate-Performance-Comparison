@@ -70,7 +70,7 @@ if filtered_target.empty or filtered_2025.empty or filtered_2026.empty:
     st.stop()
 
 # Prepare data for comparison table with corporate names
-months_2026 = ["Jan"]
+months_2026 = ["Jan", "Feb"]
 comparison_data = []
 
 # Merge DataFrames to ensure consistent corporates
@@ -249,7 +249,7 @@ else:
 st.header("2026 Weekly Data Trend")
 if not filtered_2026_week.empty:
     def calculate_slope(row):
-        weeks = [float(row[f'week {i}']) for i in range(1, 5) if pd.notna(row[f'week {i}'])]
+        weeks = [float(row[f'week {i}']) for i in range(1, 7) if pd.notna(row[f'week {i}'])]
         x = list(range(1, len(weeks) + 1))
         if np.any(weeks):  # Avoid all zeros
             slope, _ = np.polyfit(x, weeks, 1)
@@ -258,7 +258,7 @@ if not filtered_2026_week.empty:
         return slope
 
     # Convert weekly columns to numeric, coercing errors to NaN
-    weekly_cols = [f'week {i}' for i in range(1, 5)]
+    weekly_cols = [f'week {i}' for i in range(1, 7)]
     for col in weekly_cols:
         filtered_2026_week[col] = pd.to_numeric(filtered_2026_week[col], errors='coerce').fillna(0)
 
@@ -283,7 +283,7 @@ if not filtered_2026_week.empty:
         corporates_to_plot = top_corporates
 
     fig_weekly = go.Figure()
-    weeks = [f"week {i}" for i in range(1, 5)]
+    weeks = [f"week {i}" for i in range(1, 7)]
     for corp in corporates_to_plot:
         corp_data = plot_df[plot_df["Corporates"] == corp].iloc[0]
         weekly_values = [float(corp_data[week]) for week in weeks]
