@@ -25,20 +25,66 @@ USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "retention
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
+# ── Hardcoded accounts — always present, survive reboots ──────────────────────
+HARDCODED_USERS = {
+    "admin@little.africa": {
+        "password": hash_password("admin123"),
+        "role": "admin",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
+    "monicah.wachira@little.africa": {
+        "password": hash_password("A76cgFXvUWZfMON"),
+        "role": "user",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
+    "emily.njau@little.africa": {
+        "password": hash_password("A76cgFXvUWZfEmI"),
+        "role": "user",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
+    "jael.davina@little.africa": {
+        "password": hash_password("A76cgFXvUWZfJaE"),
+        "role": "user",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
+    "winnie.owendi@little.africa": {
+        "password": hash_password("A76cgFXvUWZfWIn"),
+        "role": "user",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
+}
+
 def load_users() -> dict:
-    if not os.path.exists(USERS_FILE):
-        initial = {
-            ADMIN_EMAIL: {
-                "password": hash_password("admin123"),
-                "role": "admin",
-                "active": True,
-                "created_at": datetime.now().isoformat()
-            }
-        }
-        save_users(initial)
-        return initial
-    with open(USERS_FILE, "r") as f:
-        return json.load(f)
+    # Start with hardcoded accounts as the base
+    users = {k: v.copy() for k, v in HARDCODED_USERS.items()}
+    # Merge any extra accounts added by admin via the JSON file
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r") as f:
+                saved = json.load(f)
+            for email, info in saved.items():
+                if email not in HARDCODED_USERS:
+                    # Extra account created by admin — keep it
+                    users[email] = info
+                else:
+                    # For hardcoded accounts, respect admin overrides
+                    # (e.g. revoke/restore) but keep the hardcoded password
+                    users[email]["active"] = info.get("active", True)
+                    if info.get("role"):
+                        users[email]["role"] = info["role"]
+        except Exception:
+            pass  # Corrupt file — fall back to hardcoded only
+    return users
 
 def save_users(users: dict):
     with open(USERS_FILE, "w") as f:
@@ -228,7 +274,7 @@ if target_df is None:
 MONTH_COLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 MONTH_NUM  = {m: i+1 for i, m in enumerate(MONTH_COLS)}
-WEEK_COLS  = [f"week {i}" for i in range(1, 11)]
+WEEK_COLS  = [f"week {i}" for i in range(1, 7)]
 
 current_user = st.session_state["current_user"]
 current_role = st.session_state["current_role"]
@@ -791,7 +837,7 @@ st.markdown(f"""
 # 🤖 RETENTION BOT
 # ─────────────────────────────────────────────
 st.markdown("---")
-st.header("🤖 Nexus Phil")
+st.header("🤖 Retention Intelligence Bot")
 st.markdown(
     "Ask me anything about corporate retention, churn risk, growth opportunities, or assignee performance."
 )
@@ -918,6 +964,18 @@ Always ground your answers strictly in the data provided. If something is not in
 def chat_with_bot(user_message: str, history: list) -> str:
     """Call the Anthropic API with full context."""
     import urllib.request
+    import urllib.error
+
+    # ── Retrieve API key from Streamlit secrets ───────────────────────────────
+    try:
+        api_key = st.secrets["ANTHROPIC_API_KEY"]
+    except Exception:
+        return (
+            "⚠️ Bot not configured: Please add your Anthropic API key to Streamlit secrets.\n\n"
+            "Go to your Streamlit app settings → **Secrets** and add:\n"
+            "```\nANTHROPIC_API_KEY = \"sk-ant-...\"\n```"
+        )
+
     context = build_bot_context()
     system  = SYSTEM_PROMPT.format(context=context)
 
@@ -937,13 +995,20 @@ def chat_with_bot(user_message: str, history: list) -> str:
     req = urllib.request.Request(
         "https://api.anthropic.com/v1/messages",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type":    "application/json",
+            "x-api-key":       api_key,
+            "anthropic-version": "2023-06-01"
+        },
         method="POST"
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=45) as resp:
             data = json.loads(resp.read())
             return data["content"][0]["text"]
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="ignore")
+        return f"⚠️ API error {e.code}: {body}"
     except Exception as e:
         return f"⚠️ Bot error: {e}"
 
