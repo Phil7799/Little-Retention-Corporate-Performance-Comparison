@@ -62,6 +62,13 @@ HARDCODED_USERS = {
         "created_at": "2025-01-01T00:00:00",
         "hardcoded": True
     },
+    "peter.mwangi@little.africa": {
+        "password": hash_password("A76cgFXvUWZfPeT"),
+        "role": "user",
+        "active": True,
+        "created_at": "2025-01-01T00:00:00",
+        "hardcoded": True
+    },
 }
 
 def load_users() -> dict:
