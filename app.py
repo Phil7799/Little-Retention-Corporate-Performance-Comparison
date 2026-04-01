@@ -281,7 +281,7 @@ if target_df is None:
 MONTH_COLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 MONTH_NUM  = {m: i+1 for i, m in enumerate(MONTH_COLS)}
-WEEK_COLS  = [f"week {i}" for i in range(1, 12)]
+WEEK_COLS  = [f"week {i}" for i in range(1, 14)]
 
 current_user = st.session_state["current_user"]
 current_role = st.session_state["current_role"]
