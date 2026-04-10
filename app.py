@@ -263,7 +263,7 @@ if target_df is None:
 # CONSTANTS
 # ─────────────────────────────────────────────
 MONTH_COLS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-WEEK_COLS  = [f"week {i}" for i in range(1, 14)]
+WEEK_COLS  = [f"week {i}" for i in range(1, 16)]
 
 current_user = st.session_state["current_user"]
 current_role = st.session_state["current_role"]
